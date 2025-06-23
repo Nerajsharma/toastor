@@ -1,5 +1,4 @@
-# toastor
-#    // ✅ Initialize with global config
+#    // ✅ Initialize
     new Toaster({
         theme: 'dark', // light | dark | custom         
         iconStyle: '3d', // 2d | 3d
