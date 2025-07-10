@@ -1,4 +1,4 @@
-{{-- Toast Container --}}
+<!-- Toast Container -->
 <div id="toast-container"></div>
 
 <style>
@@ -37,6 +37,7 @@
         height: 3px;
         right: 0;
         bottom: 0;
+        background-color: var(--barColor, #000); /* Default fallback */
         animation: toaster_timeup var(--timeout, 5s) linear;
     }
 
@@ -77,7 +78,7 @@
     }
 
     .toaster i:last-child:hover {
-        background-color: rgb(247, 206, 199);
+        background-color: transparent;
     }
 </style>
 
@@ -85,13 +86,18 @@
     class Toaster {
         constructor(options = {}) {
             this.config = {
-                boxShadow: true,
-                theme: 'light', // 'light' | 'dark' | 'custom'
-                iconStyle: '2d', // '2d' | '3d'
+                theme: 'light', // light | dark | custom
+                iconStyle: '2d', // 2d | 3d
                 timeout: 5000,
-                position: 'top-right', // position class
+                position: 'top-right',
+                boxShadow: 'light', // light | dark | custom | false
+                customShadowStyle: '',
                 customBg: {},
                 customTextColor: {},
+                customBorderColor: {},
+                customBarColor: {},
+                customIcons: {},
+                customIconColor: {},
                 ...options
             };
 
@@ -119,25 +125,59 @@
                 info: "nb_info3"
             };
 
-            let icon = `nb ${iconMap[type] || "nb_info3"}`;
-            if (config.iconStyle === '3d') icon += " icon-3d";
-
-            // Style handling
+            let iconClass = `nb ${iconMap[type] || "nb_info3"}`;
+            let iconColor = 'inherit';
             let backgroundStyle = '';
+            let barColor = '';
+            let shadowStyle = '';
+
             if (config.theme === 'dark') {
                 backgroundStyle = 'background-color: #1f2937; color: #fff;';
+                barColor = '#fff';
+                iconColor = '#fff';
             } else if (config.theme === 'light') {
                 backgroundStyle = 'background-color: #ffffff; color: #000;';
-            } else if (config.theme === 'custom' && config.customBg?.[type]) {
-                const bg = config.customBg[type];
-                const txt = config.customTextColor?.[type] || '#000';
-                backgroundStyle = `background: ${bg}; color: ${txt};`;
+                barColor = '#000';
+                iconColor = '#000';
+            } else if (config.theme === 'custom') {
+                // fallback defaults from light
+                let bg = '#ffffff';
+                let txt = '#000000';
+                let border = 'transparent';
+                let bar = '#000000';
+                let customIcon = `nb ${iconMap[type] || "nb_info3"}`;
+                let customIconClr = '#000000';
+
+                if (config.customBg?.[type]) bg = config.customBg[type];
+                if (config.customTextColor?.[type]) txt = config.customTextColor[type];
+                if (config.customBorderColor?.[type]) border = config.customBorderColor[type];
+                if (config.customBarColor?.[type]) bar = config.customBarColor[type];
+                if (config.customIcons?.[type]) customIcon = config.customIcons[type];
+                if (config.customIconColor?.[type]) customIconClr = config.customIconColor[type];
+
+                iconClass = customIcon;
+                iconColor = customIconClr;
+                barColor = bar;
+
+                backgroundStyle = `
+                    background: ${bg};
+                    color: ${txt};
+                    border: 1px solid ${border};
+                    --barColor: ${bar};
+                `;
             }
 
-            // Create or get the container for this position
+            // Shadow logic
+            if (config.boxShadow === 'light') {
+                shadowStyle = 'box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);';
+            } else if (config.boxShadow === 'dark') {
+                shadowStyle = 'box-shadow: 0 6px 12px rgba(0, 0, 0, 0.3);';
+            } else if (config.boxShadow === 'custom' && config.customShadowStyle) {
+                shadowStyle = `box-shadow: ${config.customShadowStyle};`;
+            }
+
             const positionClass = `toast-position toast-${config.position}`;
             let container = document.querySelector(`.${positionClass.replace(/\s/g, '.')}`);
-
             if (!container) {
                 container = document.createElement("div");
                 container.className = positionClass;
@@ -147,12 +187,13 @@
             const toast = document.createElement("div");
             toast.classList.add("relative");
 
-            const toastClasses = `toaster ${type} rounded px-4 py-2 flex items-center justify-between gap-4${config.boxShadow ? ' shadow-lg' : ''}`;
+            const toastClasses = `toaster ${type} rounded px-4 py-2 flex items-center justify-between gap-4`;
             const anim = this.getAnimation(config.position);
+            const fullStyle = `${backgroundStyle} ${shadowStyle} --timeout: ${config.timeout}ms; animation-name: ${anim};`;
 
             toast.innerHTML = `
-                <div class="${toastClasses}" style="${backgroundStyle} --timeout: ${config.timeout}ms; animation-name: ${anim};">
-                    <i class="${icon}"></i>
+                <div class="${toastClasses}" style="${fullStyle}">
+                    <i class="${iconClass}" style="color: ${iconColor};"></i>
                     <div>
                         <p class="text-base font-bold">${title}</p>
                         <p class="text-md">${text}</p>
@@ -177,22 +218,49 @@
         }
     }
 
-    // ✅ Initialize with global config
+    // ✅ Initialize globally
     new Toaster({
-        theme: 'dark', // light | dark | custom
-        iconStyle: '3d', // 2d | 3d
-        timeout: 4000, // in milliseconds
-        position: 'top-center', // top-right | top-left | bottom-right | bottom-left | top-center | bottom-center
-        boxShadow: true,
-        // customBg: {
-        //     success: 'linear-gradient(to right, #a8ff78, #78ffd6)',
-        //     error: '#ffe2e2',
-        //     info: '#d1e7ff'
-        // },
-        // customTextColor: {
-        //     success: '#075e00',
-        //     error: '#8b0000',
-        //     info: '#003865'
-        // }
+        theme: 'custom',
+        iconStyle: '2d',
+        timeout: 10000,
+        position: 'top-right',
+        boxShadow: 'dark',
+        // customShadowStyle: '0 10px 25px rgba(0, 128, 255, 0.2)',
+        customBg: {
+            success: '#1f2937',
+            error: '#1f2937',
+            info: '#1f2937',
+        },
+        customTextColor: {
+            success: '#ffffff',
+            error: '#ffffff',
+            info: '#ffffff',
+        },
+        customBorderColor: {
+            success: '#1f2937',
+            error: '#1f2937',
+            info: '#1f2937',
+        },
+        customBarColor: {
+            success: '#198754',
+            error: '#dc3545',
+            info: '#0d6efd',
+        },
+        customIcons: {
+            success: 'nb_checkmark1',
+            error: 'nb_exclamation1',
+            info: 'nb_info3',
+        },
+        customIconColor: {
+            success: '#198754',
+            error: '#dc3545',
+            info: '#0d6efd',
+        }
     });
+
+    // ✅ Example usage
+    // toaster('success', 'Success!', 'Custom success message.');
+    // toaster('error', 'Oops!', 'Something went wrong.');
+    // toaster('info', 'FYI', 'Heads up, here’s some info.');
 </script>
+
